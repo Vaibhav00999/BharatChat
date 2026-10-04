@@ -21,7 +21,7 @@ COPY . .
 ENV CGO_ENABLED=1
 CMD ["go", "test", "-race", "-count=1", "./..."]
 
-FROM alpine:3.23 AS production
+FROM alpine:3.24 AS production
 RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S bharatchat \
     && adduser -S -G bharatchat -H bharatchat
