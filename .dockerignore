@@ -1,0 +1,9 @@
+**
+!deploy/
+!deploy/aws/
+!deploy/aws/edge.Dockerfile
+!deploy/aws/nginx.conf
+!frontend/
+!frontend/build/
+!frontend/build/web/
+!frontend/build/web/**

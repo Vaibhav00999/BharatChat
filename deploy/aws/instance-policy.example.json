@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOneApplicationSecret",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:bharatchat/production-SECRET_SUFFIX"
+    },
+    {
+      "Sid": "ECRLogin",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "PullReleaseImages",
+      "Effect": "Allow",
+      "Action": ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"],
+      "Resource": [
+        "arn:aws:ecr:ap-south-1:ACCOUNT_ID:repository/bharatchat-backend",
+        "arn:aws:ecr:ap-south-1:ACCOUNT_ID:repository/bharatchat-edge"
+      ]
+    }
+  ]
+}

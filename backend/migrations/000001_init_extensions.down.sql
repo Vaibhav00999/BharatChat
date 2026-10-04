@@ -1,0 +1,10 @@
+DROP TYPE IF EXISTS report_reason;
+DROP TYPE IF EXISTS notification_type;
+DROP TYPE IF EXISTS device_platform;
+DROP TYPE IF EXISTS message_delivery_state;
+DROP TYPE IF EXISTS message_type;
+DROP TYPE IF EXISTS member_role;
+DROP TYPE IF EXISTS chat_type;
+DROP EXTENSION IF EXISTS "citext";
+DROP EXTENSION IF EXISTS "pg_trgm";
+DROP EXTENSION IF EXISTS "pgcrypto";

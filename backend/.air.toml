@@ -1,0 +1,18 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main ./cmd/server"
+entrypoint = ["./tmp/main"]
+delay = 1000
+exclude_dir = ["tmp", "vendor"]
+include_ext = ["go", "toml", "yaml", "yml"]
+kill_delay = "500ms"
+send_interrupt = true
+stop_on_error = true
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true

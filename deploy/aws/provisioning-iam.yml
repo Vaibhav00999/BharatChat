@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Owner-approved IAM bootstrap for the restricted BharatChat Mumbai pilot. No compute resources.
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+  UbuntuImage:
+    Type: AWS::EC2::Image::Id
+    Description: Reviewed Canonical Ubuntu 24.04 amd64 AMI; pinned for the first deployment.
+Resources:
+  HostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: bharatchat-prelaunch-host
+      Path: /bharatchat/runtime/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ec2.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: BharatChatReleaseRead
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Sub arn:${AWS::Partition}:secretsmanager:ap-south-1:${AWS::AccountId}:secret:bharatchat/production-??????
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action: [ecr:BatchCheckLayerAvailability, ecr:GetDownloadUrlForLayer, ecr:BatchGetImage]
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ecr:ap-south-1:${AWS::AccountId}:repository/bharatchat-backend
+                  - !Sub arn:${AWS::Partition}:ecr:ap-south-1:${AWS::AccountId}:repository/bharatchat-edge
+  HostProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: bharatchat-prelaunch-host
+      Path: /bharatchat/runtime/
+      Roles: [!Ref HostRole]
+  ProvisioningPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: BharatChatPrelaunchProvisioning
+      Path: /bharatchat/provisioning/
+      Description: Restricted Mumbai pilot provisioning; no IAM editing or direct secret access.
+      Users: [bharatchat-deployer]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CreateOnlyPilotStackWithoutServiceRole
+            Effect: Allow
+            Action: cloudformation:CreateStack
+            Resource: !Sub arn:${AWS::Partition}:cloudformation:ap-south-1:${AWS::AccountId}:stack/bharatchat-prelaunch/*
+            Condition:
+              'Null': {cloudformation:RoleArn: 'true'}
+          - Sid: ReadOnlyFixedInstanceProfile
+            Effect: Allow
+            Action: iam:GetInstanceProfile
+            Resource: !GetAtt HostProfile.Arn
+          - Sid: PassOnlyHostRoleToEC2
+            Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt HostRole.Arn
+            Condition:
+              StringEquals: {iam:PassedToService: ec2.amazonaws.com}
+          - Sid: LaunchPinnedImageAndSubnet
+            Effect: Allow
+            Action: ec2:RunInstances
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1::image/${UbuntuImage}
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:subnet/${PublicSubnetId}
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:network-interface/*
+            Condition:
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: LaunchOnlyTaggedSmallHostWithIMDSv2
+            Effect: Allow
+            Action: ec2:RunInstances
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals:
+                aws:RequestTag/Project: BharatChat
+                ec2:InstanceType: [t3.medium, t3.large]
+                ec2:MetadataHttpTokens: required
+              ArnEquals:
+                ec2:InstanceProfile: !GetAtt HostProfile.Arn
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: LaunchEncryptedBoundedVolumes
+            Effect: Allow
+            Action: ec2:RunInstances
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:volume/*
+            Condition:
+              Bool: {ec2:Encrypted: 'true'}
+              StringEquals: {ec2:VolumeType: gp3}
+              NumericLessThanEquals: {ec2:VolumeSize: '30'}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: LaunchWithPilotSecurityGroup
+            Effect: Allow
+            Action: ec2:RunInstances
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:security-group/*
+            Condition:
+              StringEquals: {ec2:ResourceTag/Project: BharatChat}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: CreateGroupOnlyInReviewedVpc
+            Effect: Allow
+            Action: ec2:CreateSecurityGroup
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:vpc/${VpcId}
+            Condition:
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: CreateTaggedNetworkResources
+            Effect: Allow
+            Action: [ec2:CreateSecurityGroup, ec2:AllocateAddress]
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:security-group/*
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:elastic-ip/*
+            Condition:
+              StringEquals: {aws:RequestTag/Project: BharatChat}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: ManageOnlyPilotNetworkResources
+            Effect: Allow
+            Action:
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:AuthorizeSecurityGroupEgress
+              - ec2:RevokeSecurityGroupIngress
+              - ec2:RevokeSecurityGroupEgress
+              - ec2:DeleteSecurityGroup
+              - ec2:AssociateAddress
+              - ec2:DisassociateAddress
+              - ec2:ReleaseAddress
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:security-group/*
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:elastic-ip/*
+            Condition:
+              StringEquals: {ec2:ResourceTag/Project: BharatChat}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: AssociateAddressWithPilotInstance
+            Effect: Allow
+            Action: ec2:AssociateAddress
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals: {ec2:ResourceTag/Project: BharatChat}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: RollbackOnlyPilotInstances
+            Effect: Allow
+            Action: ec2:TerminateInstances
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals: {ec2:ResourceTag/Project: BharatChat}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: TagAtCreationOnly
+            Effect: Allow
+            Action: ec2:CreateTags
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:instance/*
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:volume/*
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:network-interface/*
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:security-group/*
+              - !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:elastic-ip/*
+            Condition:
+              StringEquals: {ec2:CreateAction: [RunInstances, CreateSecurityGroup, AllocateAddress]}
+              ForAnyValue:StringEquals: {aws:CalledVia: [cloudformation.amazonaws.com]}
+          - Sid: ObservePilotHostManagement
+            Effect: Allow
+            Action: [ssm:DescribeInstanceInformation, ssm:GetCommandInvocation]
+            Resource: '*'
+            Condition:
+              StringEquals: {aws:RequestedRegion: ap-south-1}
+          - Sid: ManageOnlyPilotHosts
+            Effect: Allow
+            Action: ssm:SendCommand
+            Resource: !Sub arn:${AWS::Partition}:ec2:ap-south-1:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals: {ssm:resourceTag/Project: BharatChat}
+          - Sid: UseShellDocumentOnly
+            Effect: Allow
+            Action: ssm:SendCommand
+            Resource: !Sub arn:${AWS::Partition}:ssm:ap-south-1::document/AWS-RunShellScript
+Outputs:
+  HostInstanceProfile:
+    Value: !Ref HostProfile
+  HostRoleArn:
+    Value: !GetAtt HostRole.Arn

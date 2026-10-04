@@ -1,0 +1,55 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Backend Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: "1.26.8"
+          cache-dependency-path: backend/go.sum
+      - name: Verify modules
+        run: go mod verify
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Scan reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      - name: Test
+        run: |
+          set -o pipefail
+          docker info > /dev/null
+          go test -json -race -p 1 -coverprofile=coverage.out ./... | tee test-results.jsonl
+          if jq -e -s 'any(.[]; .Action == "skip" and .Test != null)' test-results.jsonl > /dev/null; then
+            echo "Release verification requires all tests, including container integrations, to execute."
+            exit 1
+          fi
+      - name: Build production binary
+        run: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /tmp/bharatchat-server ./cmd/server
+      - name: Build production container
+        run: docker build --target production --tag bharatchat-backend:candidate .

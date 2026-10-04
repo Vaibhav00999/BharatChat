@@ -1,0 +1,59 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ViewSecurityEnrollmentInformation",
+      "Effect": "Allow",
+      "Action": ["iam:GetAccountPasswordPolicy", "iam:ListVirtualMFADevices"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EnrollOwnMFAAndChangeOwnPassword",
+      "Effect": "Allow",
+      "Action": ["iam:GetUser", "iam:ListMFADevices", "iam:EnableMFADevice", "iam:ResyncMFADevice", "iam:ChangePassword"],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:user/bharatchat/${aws:username}"
+    },
+    {
+      "Sid": "CreateOwnVirtualMFA",
+      "Effect": "Allow",
+      "Action": ["iam:CreateVirtualMFADevice"],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:mfa/${aws:username}*"
+    },
+    {
+      "Sid": "ReadMumbaiNetworkPreflight",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables", "ec2:DescribeSecurityGroups", "ec2:DescribeInstances",
+        "ec2:DescribeAddresses", "ec2:DescribeImages"
+      ],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-south-1"}}
+    },
+    {
+      "Sid": "ValidateHostTemplate",
+      "Effect": "Allow",
+      "Action": ["cloudformation:ValidateTemplate"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-south-1"}}
+    },
+    {
+      "Sid": "InspectOnlyBharatChatHostStack",
+      "Effect": "Allow",
+      "Action": ["cloudformation:DescribeStacks", "cloudformation:DescribeStackEvents", "cloudformation:DescribeStackResources", "cloudformation:GetTemplate"],
+      "Resource": "arn:aws:cloudformation:ap-south-1:ACCOUNT_ID:stack/bharatchat-prelaunch/*"
+    },
+    {
+      "Sid": "ReadCanonicalPublicAMIParameter",
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+      "Resource": "arn:aws:ssm:ap-south-1::parameter/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
+    },
+    {
+      "Sid": "DoNotCreateLongLivedAPICredentials",
+      "Effect": "Deny",
+      "Action": ["iam:CreateAccessKey", "iam:UpdateAccessKey", "iam:CreateServiceSpecificCredential"],
+      "Resource": "*"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+name: bharatchat-production
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Use an ECR image pinned by digest}
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 1g
+    stop_grace_period: 30s
+    env_file:
+      - path: ${BACKEND_ENV_FILE:?Load the secret with deploy.sh}
+        format: raw
+    environment:
+      APP_ENV: production
+      HTTP_PORT: "8080"
+      LOG_LEVEL: info
+      JWT_ISSUER: https://api.bharatchat.in
+      JWT_AUDIENCE: bharatchat-clients
+      POSTGRES_SSLMODE: verify-full
+      POSTGRES_SSLROOTCERT: /app/secrets/postgres-ca.pem
+      REDIS_TLS: "true"
+      OTP_DELIVERY_MODE: msg91
+      REQUIRE_E2EE: "true"
+      MESSAGING_ENABLED: "false"
+      STORE_SESSION_NETWORK_METADATA: "false"
+      CORS_ALLOWED_ORIGINS: https://bharatchat.in
+      TRUSTED_PROXIES: 172.30.91.2/32
+    volumes:
+      - type: bind
+        source: /etc/bharatchat/rds-ca.pem
+        target: /app/secrets/postgres-ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs: [/tmp:size=16m,noexec,nosuid,nodev]
+    networks:
+      app:
+        ipv4_address: 172.30.91.3
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/readyz]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 60s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  edge:
+    image: ${EDGE_IMAGE:?Use an ECR image pinned by digest}
+    platform: linux/amd64
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 256m
+    stop_grace_period: 15s
+    ports: ["80:80", "443:443"]
+    volumes:
+      - type: bind
+        source: /etc/letsencrypt
+        target: /etc/letsencrypt
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /var/cache/nginx:size=32m,noexec,nosuid,nodev
+      - /var/run:size=1m,noexec,nosuid,nodev
+    networks:
+      app:
+        ipv4_address: 172.30.91.2
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8081/healthz]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  app:
+    ipam:
+      config:
+        - subnet: 172.30.91.0/24

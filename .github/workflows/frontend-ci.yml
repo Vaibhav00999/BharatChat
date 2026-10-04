@@ -1,0 +1,56 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Frontend Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install Flutter 3.47.5
+        shell: bash
+        run: |
+          git clone --depth 1 --branch 3.47.5 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - name: Disable analytics
+        run: flutter config --no-analytics
+      - name: Fetch packages
+        run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test --coverage
+      - name: Build web release
+        run: flutter build web --release --no-web-resources-cdn --dart-define=BASE_URL=https://api.example.invalid/api/v1
+      - name: Fetch isolated native MLS packages
+        working-directory: frontend/packages/bharatchat_mls
+        run: dart pub get --enforce-lockfile
+      - name: Verify isolated native MLS component
+        working-directory: frontend/packages/bharatchat_mls
+        run: |
+          dart format --output=none --set-exit-if-changed lib test
+          dart analyze --fatal-infos
+          dart test --concurrency=1 --reporter=expanded
