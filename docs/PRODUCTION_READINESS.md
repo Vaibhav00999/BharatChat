@@ -146,14 +146,20 @@ GitHub publication and local verification on 2026-10-04:
   passed using the dedicated local Pub cache after resolving a default-cache
   cross-volume rename error. That experimental package is still not integrated.
 - All 106 local backend race-test cases/subcases passed, with zero failures or
-  skips. The verification runner also checks the production image and isolated
-  startup; its final outcome must be checked separately before release.
+  skips. The production image built and the isolated startup smoke test passed:
+  non-root/read-only execution, migrations, health and readiness HTTP 200, and
+  protected-route HTTP 401. This is not a live production or SMS verification.
+- Mocked browser smoke tests passed at 390x844 and 1366x900: login, exact-username
+  lookup, reporting, blocking/unblocking, export consent/download and account
+  deletion. Screenshots were nonblank with no detected runtime or layout-overflow
+  errors. These checks use synthetic data and do not exercise real SMS or E2EE.
 - Mocked deployment/identity tests, CloudFormation lint and scoped-policy
-  invariants passed without AWS writes. Remote deployment and secret-scanning
-  CI passed. The initial remote frontend run exposed missing nested-package
+  invariants passed without AWS writes. Remote backend, deployment and secret-
+  scanning CI passed. The initial remote frontend run exposed missing nested-package
   dependencies on a clean checkout; dependency resolution was moved ahead of
   analysis, preserving the independent native checks. The corrected remote
-  frontend run is pending verification; remote backend CI is also still running.
+  [frontend run](https://github.com/Vaibhav00999/BharatChat/actions/runs/37174965655)
+  remains queued and is not counted as passed.
 
 Additional verification on 2026-10-02:
 
