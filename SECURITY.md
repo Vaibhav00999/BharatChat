@@ -7,8 +7,9 @@ still required. Release messaging remains locked.
 
 ## Reporting A Vulnerability
 
-Use this repository's GitHub Security tab to report privately if private
-vulnerability reporting is enabled. If it is unavailable, open an issue asking
+Private vulnerability reporting is enabled on
+[Vaibhav00999/BharatChat](https://github.com/Vaibhav00999/BharatChat/security).
+Use its Security tab to report privately. If it is unavailable, open an issue asking
 the maintainer for a private reporting channel, without exploit details,
 credentials, message contents, phone numbers, or other personal information.
 No security response time or staffed incident service is promised yet.

@@ -8,6 +8,9 @@ real-time direct messaging, presence/typing events, and group chat management.
 **Status: engineering preview, not approved for public messaging.** Publishing
 this source does not deploy a service or complete the encryption/security gates.
 The release messaging lock stays enabled. Hosting is paused by the owner.
+The public source is at [Vaibhav00999/BharatChat](https://github.com/Vaibhav00999/BharatChat).
+Remaining public-launch acceptance criteria are tracked in
+[issue #10](https://github.com/Vaibhav00999/BharatChat/issues/10).
 
 The privacy foundation adds per-device signed key bundles, one-time prekeys,
 single-use WebSocket tickets, linked-device revocation, privacy-first account
@@ -42,8 +45,11 @@ so the same delivery path works with one backend instance or many.
 
 The local `backend/.env` contains development-only values and is ignored by Git.
 Never reuse those credentials in a deployed environment.
+For a fresh clone, initialize local configuration from `backend/.env.example`
+before starting Compose; real environment files are deliberately not published.
 
 ```bash
+cp backend/.env.example backend/.env
 docker compose up -d postgres redis minio
 cd backend
 go mod tidy

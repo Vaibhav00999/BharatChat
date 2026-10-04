@@ -127,6 +127,34 @@ policy still belong in the selected deployment platform.
 
 ## Current Verification Snapshot
 
+GitHub publication and local verification on 2026-10-04:
+
+- Public source uploaded to `Vaibhav00999/BharatChat`; publishing is not deployment
+  or approval for public users. Hosting remains explicitly paused. Open launch
+  gates are tracked in GitHub issue #10 and `LAUNCH_ROADMAP.md`.
+- Source and initial Git history passed Gitleaks 8.30.1 with no detected leaks.
+  One deliberately public dummy credential is annotated in configuration tests.
+  Real environment files, signing keys, native state, logs, builds and runtime
+  evidence are excluded. Pattern-based scanning does not prove the absence of
+  every sensitive value.
+- GitHub private vulnerability reporting, provider secret scanning and push
+  protection are enabled. A pinned secret-scanning workflow is included, with
+  read-only permissions and no cloud credentials. This is not an independent
+  security review or a staffed response service.
+- Flutter analysis reported zero issues; all 45 Flutter tests passed and the web
+  release build succeeded with messaging locked. All 14 Windows native MLS tests
+  passed using the dedicated local Pub cache after resolving a default-cache
+  cross-volume rename error. That experimental package is still not integrated.
+- All 106 local backend race-test cases/subcases passed, with zero failures or
+  skips. The verification runner also checks the production image and isolated
+  startup; its final outcome must be checked separately before release.
+- Mocked deployment/identity tests, CloudFormation lint and scoped-policy
+  invariants passed without AWS writes. Remote deployment and secret-scanning
+  CI passed. The initial remote frontend run exposed missing nested-package
+  dependencies on a clean checkout; dependency resolution was moved ahead of
+  analysis, preserving the independent native checks. The corrected remote
+  frontend run is pending verification; remote backend CI is also still running.
+
 Additional verification on 2026-10-02:
 
 - The deployer submitted the restricted Mumbai pilot host stack. Security-group
