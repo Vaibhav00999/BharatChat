@@ -11,7 +11,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/redis/go-redis/v9 v9.6.3
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.11.1
