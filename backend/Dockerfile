@@ -1,4 +1,4 @@
-FROM golang:1.26.8-alpine3.23 AS base
+FROM golang:1.27.1-alpine3.23 AS base
 WORKDIR /app
 RUN apk add --no-cache git curl bash
 COPY go.mod go.sum ./
