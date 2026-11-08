@@ -1,4 +1,4 @@
-FROM nginx@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
+FROM nginx@sha256:165ddde8751e75a1c907d24ef10d9f6deb08b57e0fe56caf67512486aff76d82
 COPY deploy/aws/nginx.conf /etc/nginx/nginx.conf
 COPY frontend/build/web/ /usr/share/nginx/html/
 ENTRYPOINT ["nginx", "-g", "daemon off;"]
